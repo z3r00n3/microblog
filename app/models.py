@@ -1,8 +1,12 @@
+from app import db, login
 from datetime import datetime
-from app import db
+from werkzeug.security import generate_password_hash, check_password_hash
+from flask_login import UserMixin
 
 # Класс User наследует от db.Model, базового класса для всех моделей из Flask-SQLAlchemy
-class User(db.Model):
+# Класс User наследует от класса UserMixin из Flask-Login, который включает в себя все необходимые общие реализации,
+# а именно четыре обязательных элемента: свойства is_authenticated, is_active, is_anonymous и метод get_id()
+class User(UserMixin, db.Model):
     id = db.Column(db.Integer, primary_key=True) # primary_key - первичный ключ
     username = db.Column(db.String(64), index=True, unique=True) # поле должно и индексироваться и быть уникальным
     email = db.Column(db.String(120), index=True, unique=True) # поле должно и индексироваться и быть уникальным
@@ -12,13 +16,19 @@ class User(db.Model):
                                                                       # один user - много post
                                                                       # db.relationship определяется на стороне "один", а первый аргумент
                                                                       # указывает класс, который представляет сторону "много"
-                                                                      # backref - определяет имя поля, которое будет добавлено к объектам
-                                                                      # класса "много", который указывает на объект "один"
+                                                                      # backref - определяет имя поля (виртуального), которое будет добавлено
+                                                                      # к объектам класса "много", который указывает на объект "один"
                                                                       # lazy - определяет, как будет выполняться запрос БД для связи
 
     # __repr__() сообщает Python, как надо печатать объекты данного класса, полезно при отладке
     def __repr__(self):
         return '<User {}>'.format(self.username)
+
+    def set_password(self, password):
+        self.password_hash = generate_password_hash(password)
+
+    def check_password(self, password):
+        return check_password_hash(self.password_hash, password)
 
 class Post(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -34,3 +44,8 @@ class Post(db.Model):
 
     def __repr__(self):
         return '<Post {}>'.format(self.body)
+
+# Декоратор @login.user_loader регистрирует пользовательский загрузчик во Flask-Login
+@login.user_loader
+def load_user(id):
+    return User.query.get(int(id)) # id, который передается из Flask-Login является строкой, поэтому преобразование в int

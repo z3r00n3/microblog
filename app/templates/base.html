@@ -3,6 +3,8 @@
     были зарегистрированы во flash() ранее
 
     with var - определяет переменную var
+
+    is_anonymous - свойство равно True, если пользователь не вошел в систему
 #}
 
 <html>
@@ -17,7 +19,11 @@
         <div>
             Microblog:
             <a href="{{ url_for('index') }}">Home</a>
+            {% if current_user.is_anonymous %}
             <a href="{{ url_for('login') }}">Login</a>
+            {% else %}
+            <a href="{{ url_for('logout') }}">Logout</a>
+            {% endif %}
         </div>
         <hr>
         {% with messages = get_flashed_messages() %}
