@@ -1,8 +1,8 @@
 from flask import render_template, flash, redirect, url_for, request
 from flask_login import current_user, login_user, logout_user, login_required
 from werkzeug.urls import url_parse
-from app import app
-from app.forms import LoginForm
+from app import app, db
+from app.forms import LoginForm, RegistrationForm
 from app.models import User
 
 @app.route('/')
@@ -24,8 +24,8 @@ def index():
         }
     ]
     return render_template('index.html', title='Home', posts=posts) # render_template() - функция рендеринга шаблона,
-                                                                               # принимает имя файла шаблона и список аргументов
-                                                                               # шаблона (заполнители шаблона)
+                                                                    # принимает имя файла шаблона и список аргументов
+                                                                    # шаблона (заполнители шаблона)
 
 @app.route('/login', methods=['GET', 'POST']) # methods=['GET', 'POST']) сообщает, что по этому URL принимаются GET и POST запросы,
                                               # по умолчанию, без указания этого параметра используется GET
@@ -33,7 +33,7 @@ def index():
 def login():
     if current_user.is_authenticated: # current_user поступает из Flask-Login и используется для получения объекта пользователя
                                       # is_authenticated - свойство пользовательского объекта, унаследованное от класса UserMixin
-                                      # из Flask-Login, позволяющее проверить, зарегистрирован ли пользователь
+                                      # из Flask-Login, позволяющее проверить, аутентифицирован ли пользователь
         return redirect(url_for('index')) # redirect() - автоматический переход на другую страницу
                                           # url_for() - генерирует URL-адрес
     form = LoginForm()
@@ -61,6 +61,25 @@ def login():
             next_page = url_for('index')
         return redirect(next_page)
     return render_template('login.html', title='Sign In', form=form)
+
+@app.route('/registration', methods=['GET', 'POST'])
+def registration():
+    if current_user.is_authenticated:
+        return redirect(url_for('index'))
+    form = RegistrationForm()
+    if form.validate_on_submit():
+        user = User(username=form.username.data, email=form.email.data) # создаем объект пользователя с данными из формы
+        user.set_password(form.password.data)
+        # все изменения в БД происходят в контексте сеанса, к которому можно получить доступ с помощью db.session
+        # сеансы гарантируют, что БД никогда не останется в несогласованном состоянии
+        # эти изменения накапливаются с помощью db.session.add(), а фактически записываются при вызове db.session.commit(),
+        # т.е. можно накапливать изменения, а потом их все атомарно разом записать
+        # откатить изменения можно с помощью db.session.rollback()
+        db.session.add(user) # добавляем нового пользователя в объект БД
+        db.session.commit() # записываем изменения в БД
+        flash('Congratulations, you are now registered user!')
+        return redirect(url_for('login'))
+    return render_template('registration.html', title='Registration', form=form)
 
 @app.route('/logout')
 def logout():

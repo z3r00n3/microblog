@@ -30,6 +30,11 @@ class User(UserMixin, db.Model):
     def check_password(self, password):
         return check_password_hash(self.password_hash, password)
 
+# Декоратор @login.user_loader регистрирует пользовательский загрузчик во Flask-Login
+@login.user_loader
+def load_user(id):
+    return User.query.get(int(id)) # id, который передается из Flask-Login является строкой, поэтому преобразование в int
+
 class Post(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     body = db.Column(db.String())
@@ -44,8 +49,3 @@ class Post(db.Model):
 
     def __repr__(self):
         return '<Post {}>'.format(self.body)
-
-# Декоратор @login.user_loader регистрирует пользовательский загрузчик во Flask-Login
-@login.user_loader
-def load_user(id):
-    return User.query.get(int(id)) # id, который передается из Flask-Login является строкой, поэтому преобразование в int
