@@ -1,7 +1,8 @@
-from app import db, login
+from app import db, login, avatars_url
 from datetime import datetime
 from werkzeug.security import generate_password_hash, check_password_hash
 from flask_login import UserMixin
+import os
 
 # Класс User наследует от db.Model, базового класса для всех моделей из Flask-SQLAlchemy
 # Класс User наследует от класса UserMixin из Flask-Login, который включает в себя все необходимые общие реализации,
@@ -19,6 +20,8 @@ class User(UserMixin, db.Model):
                                                                       # backref - определяет имя поля (виртуального), которое будет добавлено
                                                                       # к объектам класса "много", который указывает на объект "один"
                                                                       # lazy - определяет, как будет выполняться запрос БД для связи
+    about_me = db.Column(db.String(140))
+    last_seen = db.Column(db.DateTime, default=datetime.utcnow)
 
     # __repr__() сообщает Python, как надо печатать объекты данного класса, полезно при отладке
     def __repr__(self):
@@ -29,6 +32,12 @@ class User(UserMixin, db.Model):
 
     def check_password(self, password):
         return check_password_hash(self.password_hash, password)
+
+    def avatar(self):
+        if os.path.exists(os.path.abspath(os.path.dirname(__file__) + '{}{}.jpg'.format(avatars_url, self.id))):
+            return '{}{}.jpg'.format(avatars_url, self.id)
+        else:
+            return '{}default_avatar.jpg'.format(avatars_url)
 
 # Декоратор @login.user_loader регистрирует пользовательский загрузчик во Flask-Login
 @login.user_loader

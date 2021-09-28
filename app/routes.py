@@ -4,6 +4,7 @@ from werkzeug.urls import url_parse
 from app import app, db
 from app.forms import LoginForm, RegistrationForm
 from app.models import User
+from datetime import datetime
 
 @app.route('/')
 @app.route('/index')
@@ -86,6 +87,45 @@ def logout():
     logout_user() # logout_user() - функция Flask-Login для выхода текущего пользователя из системы
     return redirect(url_for('index'))
 
-@app.route('/user/<name>') # <name> - переменная для формирования динамического пути; передаётся в функцию, как параметр name
-def user(name):
-    return '<h3>Hello, {}!</h3>'.format(name) # format(name) - метод подставляет в строку значение name вместо {}
+@app.route('/user/<username>') # <username> - динамический компонент URL-адреса; передаётся в функцию, как параметр username
+@login_required
+def user(username):
+    user = User.query.filter_by(username=username).first_or_404() # first_or_404() работает также как first(), когда есть результат,
+                                                                  # но в случае его отсутствия будет вызвано исключение, и клиенту
+                                                                  # вернется ошибка 404
+    posts = [
+        {'author': user, 'body': 'Test post #1'},
+        {'author': user, 'body': 'Test post #2'}
+    ]
+    return render_template('user.html', user=user, posts=posts)
+
+@app.before_request # Декоратор регистрирует функцию, которая должна быть выполнена всякий раз, как пользователь отправляет
+                    # запрос на сервер, то есть до того, как будет вызвана какая-либо функция представления
+def before_request():
+    if current_user.is_authenticated:
+        current_user.last_seen = datetime.utcnow()
+        db.session.commit()
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
