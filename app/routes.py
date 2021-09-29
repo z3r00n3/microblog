@@ -1,10 +1,11 @@
 from flask import render_template, flash, redirect, url_for, request
 from flask_login import current_user, login_user, logout_user, login_required
 from werkzeug.urls import url_parse
-from app import app, db
+from app import app, db, avatars_url
 from app.forms import LoginForm, RegistrationForm, EditProfileForm
 from app.models import User
 from datetime import datetime
+import os
 
 @app.route('/')
 @app.route('/index')
@@ -46,7 +47,7 @@ def login():
         if user is None or not user.check_password(form.password.data): # проверяем, существует ли пользователь с указанным именем и
                                                                         # соответствует ли введенный из формы пароль хешу пароля из БД
             flash('Invalid username or password') # выводит сообщение в случае неудачи
-            return redirect(url_for('login')) # и перенаправляет на повторный вход
+            return redirect(url_for('login'))     # и перенаправляет на повторный вход
         login_user(user, remember=form.remember_me.data) # в случае удачной проверки регистрируем вход пользователя в систему
                                                          # с помощью login_user() из Flask-Login. После этого для данного
                                                          # пользователя устанавливается переменная current_user из Flask-Login
@@ -104,11 +105,15 @@ def user(username):
 def edit_profile():
     form = EditProfileForm()
     if form.validate_on_submit(): # validate_on_submit() вернет True, если были пройдены все проверки полей и отправляется запрос POST
+        avatar_path = os.path.abspath(os.path.dirname(__file__) + '{}{}.jpg'.format(avatars_url, current_user.id))
+        if form.avatar.data is not None:       # Проверяем, загружено ли изображение для новой аватарки
+            if os.path.exists(avatar_path):    # Проверяем, существует ли старая аватарка у данного пользователя
+                os.remove(avatar_path)         # Если существует, то удаляем ее
+            form.avatar.data.save(avatar_path) # Сохраняем новую аватарку
         current_user.username = form.username.data
         current_user.about_me = form.about_me.data
         db.session.commit()
         flash('Your changes have been saved')
-#        return redirect(url_for('edit_profile'))
     elif request.method == 'GET':
         form.username.data = current_user.username
         form.about_me.data = current_user.about_me

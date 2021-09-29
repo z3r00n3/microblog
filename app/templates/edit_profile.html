@@ -1,9 +1,22 @@
+{#
+    enctype - атрибут определяет способ кодирования данных формы при их отправке
+              на сервер, для отправки файла значение устанавливается в multipart/form-data
+#}
+
 {% extends "base.html" %}
 
 {% block content %}
     <h1>Edit profile</h1>
-    <form action="" method="post">
+    <form action="" method="post" enctype="multipart/form-data">
         {{ form.hidden_tag() }}
+        <p>
+            {{ form.avatar.label }}<br>
+            <img src="{{ current_user.avatar() }}" width="128" height="128"><br>
+            {{ form.avatar() }}<br>
+            {% for error in form.avatar.errors %}
+            <span style="color: red;">[{{ error }}]</span>
+            {% endfor %}
+        </p>
         <p>
             {{ form.username.label }}<br>
             {{ form.username(size=32) }}<br>
@@ -13,7 +26,7 @@
         </p>
         <p>
             {{ form.about_me.label }}<br>
-            {{ form.about_me(cols=50, rows=4) }}<br>
+            {{ form.about_me(cols=40, rows=5) }}<br>
             {% for error in form.about_me.errors %}
             <span style="color: red;">[{{ error }}]</span>
             {% endfor %}
