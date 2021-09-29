@@ -39,7 +39,8 @@ class User(UserMixin, db.Model):
         else:
             return '{}default_avatar.jpg'.format(avatars_url)
 
-# Декоратор @login.user_loader регистрирует пользовательский загрузчик во Flask-Login
+# Декоратор @login.user_loader регистрирует пользовательский загрузчик во Flask-Login,
+# с помощью этой функции в current_user оказывается текущий пользователь
 @login.user_loader
 def load_user(id):
     return User.query.get(int(id)) # id, который передается из Flask-Login является строкой, поэтому преобразование в int
