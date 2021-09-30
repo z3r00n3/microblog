@@ -1,4 +1,4 @@
-from flask import render_template, flash, redirect, url_for, request
+from flask import render_template, flash, redirect, url_for, request, abort
 from flask_login import current_user, login_user, logout_user, login_required
 from werkzeug.urls import url_parse
 from app import app, db, avatars_url
@@ -9,7 +9,7 @@ import os
 
 @app.route('/')
 @app.route('/index')
-@login_required # защищаем страницу от просмотра неаутентифицированными пользователями
+@login_required # Защищаем страницу от просмотра неаутентифицированными пользователями
 def index():
     posts = [
         {
@@ -29,8 +29,8 @@ def index():
                                                                     # принимает имя файла шаблона и список аргументов
                                                                     # шаблона (заполнители шаблона)
 
-@app.route('/login', methods=['GET', 'POST']) # methods=['GET', 'POST']) сообщает, что по этому URL принимаются GET и POST запросы,
-                                              # по умолчанию, без указания этого параметра используется GET
+@app.route('/login', methods=['GET', 'POST']) # methods=['GET', 'POST']) сообщает, что по этому URL принимаются GET и POST запросы
+                                              # По умолчанию, без указания этого параметра используется GET
                                               # POST - обычно используется, когда браузер передает данные формы на сервер
 def login():
     if current_user.is_authenticated: # current_user поступает из Flask-Login и используется для получения объекта пользователя
@@ -38,29 +38,34 @@ def login():
                                       # из Flask-Login, позволяющее проверить, аутентифицирован ли пользователь
         return redirect(url_for('index')) # redirect() - автоматический переход на другую страницу
                                           # url_for() - генерирует URL-адрес
+
     form = LoginForm()
-    if form.validate_on_submit(): # метод validate_on_submit() выполняет обработку формы: собирает все данные, запускает все валидаторы
-        user = User.query.filter_by(username=form.username.data).first() # имя пользователя пришло с формой отправки, поэтому можно
+
+    if form.validate_on_submit(): # Метод validate_on_submit() выполняет обработку формы: собирает все данные, запускает все валидаторы
+        user = User.query.filter_by(username=form.username.data).first() # Имя пользователя пришло из формы отправки, поэтому можно
                                                                          # запросить БД, чтобы найти его
                                                                          # filter_by() - возвращает объекты с совпадающими именами
-                                                                         # first() - вернет первый объект из очереди или None, если пусто
-        if user is None or not user.check_password(form.password.data): # проверяем, существует ли пользователь с указанным именем и
+                                                                         # first()     - вернет первый объект из очереди или None, если такого нет
+        if user is None or not user.check_password(form.password.data): # Проверяем, существует ли пользователь с указанным именем и
                                                                         # соответствует ли введенный из формы пароль хешу пароля из БД
-            flash('Invalid username or password') # выводит сообщение в случае неудачи
-            return redirect(url_for('login'))     # и перенаправляет на повторный вход
-        login_user(user, remember=form.remember_me.data) # в случае удачной проверки регистрируем вход пользователя в систему
+            flash('Invalid username or password')                       # Если такого пользователя нет или пароль неправильный, выводим
+            return redirect(url_for('login'))                           # сообщение с ошибкой и перенаправляем на повторный вход
+
+        login_user(user, remember=form.remember_me.data) # В случае удачной проверки регистрируем вход пользователя в систему
                                                          # с помощью login_user() из Flask-Login. После этого для данного
                                                          # пользователя устанавливается переменная current_user из Flask-Login
                                                          # и она будет доступна на любых будущих страницах, которые посетит пользователь
+
         next_page = request.args.get('next') # request - предоставляет строку запроса
                                              # args - предоставляет эту же строку запроса, но уже в виде словаря
-        if not next_page or url_parse(next_page).netloc != '': # url_parse() из Werkzeug анализирует next_page, а затем идет
+        if not next_page or url_parse(next_page).netloc != '': # url_parse() - из Werkzeug анализирует next_page, а затем идет
                                                                # проверка, установлен ли компонент netloc (network location -
                                                                # упрощенно доменное имя). Это позволяет понять, является URL
                                                                # относительныи или абсолютным. Это нужно из соображений безопасности,
                                                                # т.к. злоумышленник может подставить в аргумент next строки запроса
                                                                # URL-адрес злоумышленного сайта
             next_page = url_for('index')
+
         return redirect(next_page)
     return render_template('login.html', title='Sign In', form=form)
 
@@ -68,17 +73,21 @@ def login():
 def registration():
     if current_user.is_authenticated:
         return redirect(url_for('index'))
+
     form = RegistrationForm()
+
     if form.validate_on_submit():
-        user = User(username=form.username.data, email=form.email.data) # создаем объект пользователя с данными из формы
+        user = User(username=form.username.data, email=form.email.data) # Создаем объект пользователя с данными из формы
         user.set_password(form.password.data)
-        # все изменения в БД происходят в контексте сеанса, к которому можно получить доступ с помощью db.session
-        # сеансы гарантируют, что БД никогда не останется в несогласованном состоянии
-        # эти изменения накапливаются с помощью db.session.add(), а фактически записываются при вызове db.session.commit(),
-        # т.е. можно накапливать изменения, а потом их все атомарно разом записать
-        # откатить изменения можно с помощью db.session.rollback()
-        db.session.add(user) # добавляем нового пользователя в объект БД
-        db.session.commit() # записываем изменения в БД
+
+        db.session.add(user) # Добавляем нового пользователя в объект БД
+        db.session.commit()  # Записываем изменения в БД
+                             # Все изменения в БД происходят в контексте сеанса, к которому можно получить доступ с помощью db.session
+                             # сеансы гарантируют, что БД никогда не останется в несогласованном состоянии
+                             # Эти изменения накапливаются с помощью db.session.add(), а фактически записываются при вызове db.session.commit(),
+                             # т.е. можно накапливать изменения, а потом их все атомарно разом записать
+                             # Откатить изменения можно с помощью db.session.rollback()
+
         flash('Congratulations, you are now registered user!')
         return redirect(url_for('login'))
     return render_template('registration.html', title='Registration', form=form)
@@ -103,10 +112,11 @@ def user(username):
 @app.route('/edit_profile', methods=['GET', 'POST'])
 @login_required
 def edit_profile():
-    form = EditProfileForm()
+    form = EditProfileForm(current_user.username)
+
     if form.validate_on_submit(): # validate_on_submit() вернет True, если были пройдены все проверки полей и отправляется запрос POST
         avatar_path = os.path.abspath(os.path.dirname(__file__) + '{}{}.jpg'.format(avatars_url, current_user.id))
-        if form.avatar.data is not None:       # Проверяем, загружено ли изображение для новой аватарки
+        if form.avatar.data is not None:       # Проверяем загружено ли изображение для новой аватарки
             if os.path.exists(avatar_path):    # Проверяем, существует ли старая аватарка у данного пользователя
                 os.remove(avatar_path)         # Если существует, то удаляем ее
             form.avatar.data.save(avatar_path) # Сохраняем новую аватарку
@@ -117,6 +127,7 @@ def edit_profile():
     elif request.method == 'GET':
         form.username.data = current_user.username
         form.about_me.data = current_user.about_me
+
     return render_template('edit_profile.html', title='Edit Profile', form=form)
 
 @app.before_request # Декоратор регистрирует функцию, которая должна быть выполнена всякий раз, как пользователь отправляет

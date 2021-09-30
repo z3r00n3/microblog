@@ -4,27 +4,25 @@ from werkzeug.security import generate_password_hash, check_password_hash
 from flask_login import UserMixin
 import os
 
-# Класс User наследует от db.Model, базового класса для всех моделей из Flask-SQLAlchemy
-# Класс User наследует от класса UserMixin из Flask-Login, который включает в себя все необходимые общие реализации,
-# а именно четыре обязательных элемента: свойства is_authenticated, is_active, is_anonymous и метод get_id()
-class User(UserMixin, db.Model):
+class User(UserMixin, db.Model): # Класс User наследует от db.Model, базового класса для всех моделей из Flask-SQLAlchemy
+                                 # Класс User наследует от класса UserMixin из Flask-Login, который включает в себя все необходимые общие реализации,
+                                 # а именно четыре обязательных элемента: свойства is_authenticated, is_active, is_anonymous и метод get_id()
     id = db.Column(db.Integer, primary_key=True) # primary_key - первичный ключ
     username = db.Column(db.String(64), index=True, unique=True) # поле должно и индексироваться и быть уникальным
-    email = db.Column(db.String(120), index=True, unique=True) # поле должно и индексироваться и быть уникальным
+    email = db.Column(db.String(120), index=True, unique=True)   # поле должно и индексироваться и быть уникальным
     password_hash = db.Column(db.String(128))
-    posts = db.relationship('Post', backref='author', lazy='dynamic') # это не фактическое поле БД, а высокоуровневое представление о
+    posts = db.relationship('Post', backref='author', lazy='dynamic') # Это не фактическое поле БД, а высокоуровневое представление о
                                                                       # взаимотношениях между user и post. Связь "один ко многим", т.е.
                                                                       # один user - много post
                                                                       # db.relationship определяется на стороне "один", а первый аргумент
                                                                       # указывает класс, который представляет сторону "много"
                                                                       # backref - определяет имя поля (виртуального), которое будет добавлено
                                                                       # к объектам класса "много", который указывает на объект "один"
-                                                                      # lazy - определяет, как будет выполняться запрос БД для связи
+                                                                      # lazy    - определяет, как будет выполняться запрос БД для связи
     about_me = db.Column(db.String(140))
     last_seen = db.Column(db.DateTime, default=datetime.utcnow)
 
-    # __repr__() сообщает Python, как надо печатать объекты данного класса, полезно при отладке
-    def __repr__(self):
+    def __repr__(self): # __repr__() сообщает Python, как надо печатать объекты данного класса, полезно при отладке
         return '<User {}>'.format(self.username)
 
     def set_password(self, password):
@@ -39,9 +37,8 @@ class User(UserMixin, db.Model):
         else:
             return '{}default_avatar.jpg'.format(avatars_url)
 
-# Декоратор @login.user_loader регистрирует пользовательский загрузчик во Flask-Login,
-# с помощью этой функции в current_user оказывается текущий пользователь
-@login.user_loader
+@login.user_loader # Декоратор @login.user_loader регистрирует пользовательский загрузчик во Flask-Login,
+                   # с помощью этой функции в current_user оказывается текущий пользователь
 def load_user(id):
     return User.query.get(int(id)) # id, который передается из Flask-Login является строкой, поэтому преобразование в int
 
